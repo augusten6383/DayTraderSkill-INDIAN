@@ -1,0 +1,8 @@
+price of {index} {strike} {opttype}
+check {index} {strike} {opttype}
+look up {index} {strike} {opttype}
+get {index} {strike} {opttype}
+{index} {strike} {opttype} price
+price of {index} atm {opttype}
+check {index} {opttype}
+{index} {opttype}

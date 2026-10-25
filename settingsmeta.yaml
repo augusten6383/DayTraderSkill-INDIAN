@@ -1,0 +1,22 @@
+name: Indian Day Trader Skill
+skill:
+  info:
+    name: Indian Index Options Trader
+    service: Angel One SmartAPI
+  fields:
+    - name: api_key
+      type: text
+      label: Angel One SmartAPI Key
+      placeholder: "Enter your SmartAPI App Key"
+    - name: client_id
+      type: text
+      label: Angel One Client Code
+      placeholder: "e.g. A123456"
+    - name: pin
+      type: password
+      label: 4-Digit MPIN
+      placeholder: "Enter 4-digit MPIN"
+    - name: totp_secret
+      type: text
+      label: TOTP Secret Key
+      placeholder: "Enter your Base32 TOTP secret key"

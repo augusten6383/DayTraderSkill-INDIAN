@@ -1,0 +1,29 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Environment & sensitive credentials
+settings.json
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# Trader runtime generated files
+trader/state/
+trader/prices.json
+trader/watchlist.json
+trader/orders.json
+trader/portfolio.json
+trader/plan.json
+logs/
+*.log
+
+# Operating System files
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,36 @@
+{
+  "market": "INDIA",
+  "timezone": "Asia/Kolkata",
+  "market_open": "09:15",
+  "market_close": "15:30",
+  "auto_square_off": "15:15",
+  "currency": "INR",
+  "currency_symbol": "₹",
+  "budget_inr": 50000,
+  "max_loss_per_trade_inr": 2000,
+  "max_daily_loss_inr": 5000,
+  "max_trades_per_day": 3,
+  "indices": {
+    "NIFTY": {
+      "exchange": "NSE",
+      "index_token": "99926000",
+      "lot_size": 25,
+      "strike_step": 50,
+      "opt_exchange": "NFO"
+    },
+    "BANKNIFTY": {
+      "exchange": "NSE",
+      "index_token": "99926009",
+      "lot_size": 15,
+      "strike_step": 100,
+      "opt_exchange": "NFO"
+    },
+    "SENSEX": {
+      "exchange": "BSE",
+      "index_token": "99919000",
+      "lot_size": 10,
+      "strike_step": 100,
+      "opt_exchange": "BFO"
+    }
+  }
+}
