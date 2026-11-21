@@ -10,7 +10,7 @@ description: >-
   and logs each trade's max loss so trader-risk can hold the daily limit.
   Covers setting up Alpaca's official MCP server in Claude Desktop (paper by
   default, keys in env vars, never in chat), the Interactive Brokers
-  connector, and setting order tools to "Needs approval". Use when the user
+  connector, and Zerodha Kite Connect through the local CLI. Use when the user
   says "place the order", "buy it", "execute", "send it to my broker",
   "close my position", "flatten", "get me out", "connect Alpaca", "set up
   paper trading", or after /trader-risk passes.
@@ -20,13 +20,13 @@ argument-hint: "[order number]"
 # trader-broker
 
 The Order Executor is the only skill in this pack that can lead to a real
-order, so it is the strictest. An order reaches the market only after three
-separate gates, every time, for every order:
+order, so it is the strictest. Every broker path requires a risk pass and two
+separate user confirmations:
 
-1. **trader-risk passed this exact order today** (matched by fingerprint).
-2. **The user typed an explicit yes for this one order** in the chat.
-3. **The user clicked Allow once** on Claude's own permission card, which
-   appears because the order tool is set to "Needs approval".
+1. **The exact order passed today's risk check** (matched by fingerprint).
+2. **The user explicitly approved this one order** in the chat.
+3. **A second user confirmation:** Allow once on the connector card for
+   Alpaca/IBKR, or the exact fingerprint typed in the local terminal for Kite.
 
 Two yeses from the user, one PASS from the rules. No yes, no order.
 
@@ -135,6 +135,76 @@ submits orders directly to the market. So with IBKR the final yes happens in
 IBKR as well. Set `"broker": "ibkr"` in `trader/config.json`. Set its tools
 that draft orders to Needs approval too.
 
+## Setup C: Zerodha Kite Connect (local CLI)
+
+Kite Connect has no paper-trading account. Its regular equity orders do not
+provide the attached stop/target OCO bracket used by Alpaca. This adapter
+currently allows NSE/BSE equities, CNC product, limit orders, and long
+buys only. A stop in the plan is used by the Indian risk check but is not sent
+to Kite; manage exits separately in Kite. Do not treat this as an automatically
+protected trade.
+
+1. Run `pip install -r requirements.txt`, create a Kite Connect app with
+   Zerodha, and set `kite_api_key` and `kite_api_secret` in the ignored local
+   `settings.json`. Environment variables `KITE_API_KEY` and
+   `KITE_API_SECRET` override those values. Never put either value in chat or
+   commit it. Configure the app's redirect URL in Zerodha's developer console.
+2. Run `python trader-broker/kite.py login`. Open the printed Zerodha login
+   URL, copy the short-lived `request_token` query parameter from the redirect,
+   then paste it at the hidden local prompt. The daily access token is saved
+   under the ignored `trader/state/` folder. Treat that file as a secret; do
+   not share or commit it.
+3. Use `profile`, `quote --symbol INFY`, `holdings`, `positions`, and `orders`
+   for account reads.
+4. For one order, run `check`, review the exact ticket and stop warning, then
+   record the user's explicit yes with `approve --reply "yes"`.
+5. Only after those gates, run `place` from an interactive terminal. It
+   requires typing `PLACE LIVE <fingerprint>` locally. Scheduled/background
+   placement is refused. Kite's order response means accepted for processing,
+   not filled.
+
+Example:
+
+```bash
+python trader-broker/kite.py check --order trader/orders.json
+python trader-broker/kite.py approve --reply "yes"
+python trader-broker/kite.py place
+```
+
+Put the single order object below in `trader/orders.json` before running the
+commands.
+
+The order must be a single JSON order with `symbol`, `exchange` (`NSE` or
+`BSE`), `side` (`buy`), whole-share `qty`, `type` (`limit`),
+`product` (`CNC`), `validity` (`DAY`), and a `plan` containing positive
+`entry` and `stop` prices. Kite does not link that planned stop to the entry.
+The Indian risk checker and this adapter's local daily order log must pass
+before the explicit yes and local live confirmation are accepted.
+Any untracked Kite order for the day, including a filled order, blocks this
+adapter's risk check for the rest of the day. Do not mix external Kite orders
+with this adapter's daily risk log. If a network failure leaves a placement's
+outcome unknown, verify it in Kite; new checks are blocked for the rest of
+that day to prevent a duplicate submission.
+
+Example shape only; replace the instrument and prices with the user's checked
+trade plan:
+
+```json
+{
+  "orders": [{
+    "symbol": "INFY",
+    "exchange": "NSE",
+    "side": "buy",
+    "qty": "5",
+    "type": "limit",
+    "limit_price": "1500.00",
+    "product": "CNC",
+    "validity": "DAY",
+    "plan": {"entry": 1500.00, "stop": 1450.00}
+  }]
+}
+```
+
 ## Steps: the entry
 
 1. `ticket.py show`. Only READY tickets go to the user. A ticket that is NOT
@@ -197,16 +267,18 @@ buttons: Allow once, Deny. Allow once sends it to the paper account. The
 - Never places orders from a scheduled or background task: nobody is there to say yes.
 - Never asks for, reads, stores or repeats API keys or passwords.
 - Never switches `ALPACA_PAPER_TRADE` or `"paper"` to live. The user does that themselves.
+- Never presents Zerodha Kite as paper trading: Kite orders are live-capable, and its API has no paper account.
 - Never calls `close_all_positions`, `cancel_all_orders`, option or crypto order tools on its own.
 - Never promises a fill price: a market order and a stop fill at whatever the market gives.
 
 ## Safety
 
 - Education and tooling, not financial advice. A PASS is a rules check, not a recommendation.
-- Paper trading by default (`"paper": true`). Going live is the user's own decision, in their own config.
-- Nothing in this pack places an order except trader-broker, and only when all three hold: trader-risk
-  passed that exact order today, the user typed an explicit yes for that one order in the chat, and the
-  user clicked Allow once on Claude's own card because the order tool is set to "Needs approval"
-  (Customize > Connectors > tool permissions). Never set an order tool to "Always allow".
+- Alpaca is paper by default (`"paper": true`). Going live is the user's own decision.
+- Alpaca orders require trader-risk PASS for the exact order, the user's explicit yes in chat, and
+  Allow once on Claude's permission card. Never set an order tool to "Always allow".
+- Kite has no paper mode. Its local CLI requires the Indian risk check to pass for the exact order,
+  the user's explicit yes, and the exact fingerprint confirmation typed in an interactive terminal.
+  The Kite stop is not attached to its entry order; the user manages the exit separately.
 - No options, margin, short selling or leverage unless the config allows it and the user confirms.
 - Broker keys live in environment variables or the Claude Desktop config, never in the chat.

@@ -1,0 +1,30 @@
+RELIANCE.NS|Reliance Industries Ltd
+HDFCBANK.NS|HDFC Bank Ltd
+ICICIBANK.NS|ICICI Bank Ltd
+INFY.NS|Infosys Ltd
+TCS.NS|Tata Consultancy Services Ltd
+ITC.NS|ITC Ltd
+LT.NS|Larsen & Toubro Ltd
+SBIN.NS|State Bank of India
+BHARTIARTL.NS|Bharti Airtel Ltd
+KOTAKBANK.NS|Kotak Mahindra Bank Ltd
+AXISBANK.NS|Axis Bank Ltd
+HINDUNILVR.NS|Hindustan Unilever Ltd
+BAJFINANCE.NS|Bajaj Finance Ltd
+MARUTI.NS|Maruti Suzuki India Ltd
+TATAMOTORS.NS|Tata Motors Ltd
+SUNPHARMA.NS|Sun Pharmaceutical Industries Ltd
+TITAN.NS|Titan Company Ltd
+NTPC.NS|NTPC Ltd
+POWERGRID.NS|Power Grid Corporation of India Ltd
+TATASTEEL.NS|Tata Steel Ltd
+ASIANPAINT.NS|Asian Paints Ltd
+M&M.NS|Mahindra & Mahindra Ltd
+ADANIENT.NS|Adani Enterprises Ltd
+ADANIPORTS.NS|Adani Ports and SEZ Ltd
+COALINDIA.NS|Coal India Ltd
+BAJAJFINSV.NS|Bajaj Finserv Ltd
+ONGC.NS|Oil & Natural Gas Corporation Ltd
+JSWSTEEL.NS|JSW Steel Ltd
+WIPRO.NS|Wipro Ltd
+HCLTECH.NS|HCL Technologies Ltd

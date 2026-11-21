@@ -91,6 +91,27 @@ def send_orb_signal(index_name, spot_price, range_high, range_low, strike_opt, p
     )
     return send_telegram_message(msg)
 
+def send_orb_alert(index_name, side, bar_time, spot, range_high, range_low, stop, target):
+    """Dispatches an opening-range break alert with index (spot) levels only.
+
+    It names no option contract and no premium: those have to come from a live
+    option quote, and this alert has none.
+    """
+    arrow = "🟢 BREAKOUT (up)" if side == "long" else "🔴 BREAKDOWN (down)"
+    msg = (
+        f"🚨 <b>OPENING RANGE {arrow}: {index_name}</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"🕒 <b>Bar:</b> {bar_time} IST closed at {spot:,.2f}\n"
+        f"📊 <b>Opening range:</b> {range_low:,.2f} - {range_high:,.2f}\n"
+        f"🛑 <b>Index stop (range midpoint):</b> {stop:,.2f}\n"
+        f"🎯 <b>Index target:</b> {target:,.2f}\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "Levels are for the index, from a feed that can lag. Check the live price, "
+        "size the trade and pass the risk check before any order.\n"
+        "<i>⚠️ An alert, not advice. Square off by 15:15 IST.</i>"
+    )
+    return send_telegram_message(msg)
+
 def send_squareoff_reminder():
     """Dispatches 15:10 IST Auto Square-Off Reminder"""
     msg = (
@@ -104,7 +125,7 @@ def send_squareoff_reminder():
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "test":
         print("Testing Telegram message delivery...")
-        ok = send_telegram_message("👋 <b>Day Trader Skill Bot Connected!</b>\nYour Indian Index Options Telegram alerts are active.")
+        ok = send_telegram_message("👋 <b>Jemo Trading Skill Bot Connected!</b>\nYour Indian Index Options Telegram alerts are active.")
         if ok:
             print("✅ Test message delivered to your Telegram!")
         else:

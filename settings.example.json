@@ -1,6 +1,10 @@
 {
-  "api_key": "YOUR_ANGEL_ONE_API_KEY",
-  "client_id": "YOUR_ANGEL_ONE_CLIENT_ID",
-  "pin": "YOUR_4_DIGIT_MPIN",
-  "totp_secret": "YOUR_BASE32_TOTP_SECRET"
+  "kite_api_key": "YOUR_KITE_API_KEY",
+  "kite_api_secret": "YOUR_KITE_API_SECRET",
+  "sec_user_agent": "Your Name you@example.com",
+  "email_to": "you@example.com",
+  "smtp_user": "you@example.com",
+  "smtp_password": "APP_PASSWORD_NOT_YOUR_LOGIN_PASSWORD",
+  "telegram_bot_token": "YOUR_TELEGRAM_BOT_TOKEN",
+  "telegram_chat_id": "YOUR_TELEGRAM_CHAT_ID"
 }

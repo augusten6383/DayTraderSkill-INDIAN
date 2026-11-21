@@ -192,7 +192,13 @@ class Fetcher(object):
 
 
 def yahoo_symbol(ticker):
-    return ticker.upper().replace(".", "-")
+    """Yahoo's spelling: a US share class (BRK.B) becomes BRK-B, while an exchange
+    suffix (RELIANCE.NS, MCX.BO, VOD.L) stays as it is."""
+    ticker = ticker.upper()
+    base, dot, suffix = ticker.rpartition(".")
+    if dot and len(suffix) == 1:
+        return "%s-%s" % (base, suffix)
+    return ticker
 
 
 def cik_map(fetcher, state):
@@ -302,7 +308,8 @@ def parse_chart(data, ticker):
     when = meta.get("regularMarketTime")
     return {"ticker": ticker, "price": round(float(price), 2), "prev_close": round(float(prev), 2),
             "pct": round((float(price) / float(prev) - 1) * 100, 2),
-            "time": _dt.datetime.fromtimestamp(when, _dt.timezone.utc) if when else None}
+            "time": _dt.datetime.fromtimestamp(when, _dt.timezone.utc) if when else None,
+            "name": meta.get("longName") or meta.get("shortName")}
 
 
 def collect_moves(fetcher, watch, errors=None):
@@ -335,8 +342,10 @@ def mention_patterns(watch):
     return pats
 
 
-def tag(items, watch):
-    """Which of your tickers each item touches, and why it matters."""
+def tag(items, watch, keywords=None):
+    """Which of your tickers each item touches, and why it matters.
+    `keywords` replaces the US topic list (trader-news/news_indian.py passes its own)."""
+    keywords = KEYWORDS if keywords is None else keywords
     pats = mention_patterns(watch)
     for it in items:
         hay = "%s %s" % (it["title"], it.get("summary") or "")
@@ -345,7 +354,7 @@ def tag(items, watch):
             if rx.search(hay):
                 touches.add(t)
         it["touches"] = sorted(touches)
-        it["tags"] = [label for label, rx in KEYWORDS if re.search(rx, hay, re.I)]
+        it["tags"] = [label for label, rx in keywords if re.search(rx, hay, re.I)]
         if it["kind"] == "filing" and "2.02" in it.get("items", []) and "earnings" not in it["tags"]:
             it["tags"].insert(0, "earnings")
     return items

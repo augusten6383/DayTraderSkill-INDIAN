@@ -13,7 +13,7 @@ of the newest 8-K with item 2.02) and the latest 10-Q or 10-K.
     python3 facts.py AAPL AXP GOOGL KO BAC --metrics trader/metrics.json
 
 Sources (SEC; a User-Agent with your name and email is required, from
---user-agent, SEC_USER_AGENT or sec_user_agent in trader/config.json):
+--user-agent, SEC_USER_AGENT or sec_user_agent in settings.json):
   https://www.sec.gov/files/company_tickers.json            ticker -> CIK
   https://data.sec.gov/api/xbrl/companyfacts/CIK##########.json
   https://data.sec.gov/submissions/CIK##########.json        filings list
@@ -55,8 +55,9 @@ FACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK%s.json"
 SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK%s.json"
 ARCHIVE_URL = "https://www.sec.gov/Archives/edgar/data/%d/%s/"
 PLACEHOLDER = "you@example.com"
+DEFAULT_CONFIG = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "settings.json"))
 UA_HELP = ("SEC requires a User-Agent with your name and email. Set \"sec_user_agent\": "
-           "\"Your Name you@example.com\" in trader/config.json (your real name and email), "
+           "\"Your Name you@example.com\" in settings.json (your real name and email), "
            "or export SEC_USER_AGENT, or pass --user-agent.")
 
 CONCEPTS = {
@@ -76,7 +77,7 @@ class FactsError(Exception):
     pass
 
 
-def user_agent(cli=None, config="trader/config.json"):
+def user_agent(cli=None, config=DEFAULT_CONFIG):
     ua = (cli or os.environ.get("SEC_USER_AGENT") or "").strip()
     if not ua and config and os.path.isfile(config):
         try:
@@ -467,6 +468,19 @@ def ticker_ciks(fetcher):
     return out
 
 
+def company_for_query(query, ciks):
+    """Resolve a ticker or a unique company-name prefix to its SEC listing."""
+    ticker = query.upper().replace("-", ".")
+    if ticker in ciks:
+        return ticker, ciks[ticker]
+    normalized = re.sub(r"[^A-Z0-9]", "", query.upper())
+    matches = [
+        (symbol, entry) for symbol, entry in ciks.items()
+        if entry[1] and re.sub(r"[^A-Z0-9]", "", entry[1].upper()).startswith(normalized)
+    ]
+    return matches[0] if len(matches) == 1 else (None, None)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("tickers", nargs="*", help="tickers, e.g. AAPL KO")
@@ -475,7 +489,7 @@ def main(argv=None):
     ap.add_argument("--no-filings", action="store_true", help="skip the 8-K and 10-Q links")
     ap.add_argument("--metrics", metavar="FILE", help="merge a row per ticker into this JSON")
     ap.add_argument("--user-agent")
-    ap.add_argument("--config", default="trader/config.json")
+    ap.add_argument("--config", default=DEFAULT_CONFIG)
     ap.add_argument("--offline", metavar="DIR")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
@@ -495,14 +509,15 @@ def main(argv=None):
         return 2
     wanted = args.tickers or [args.cik]
     for t in wanted:
-        tick = t.upper()
         if args.cik:
-            cik, name = str(args.cik).zfill(10), None
+            tick, cik, name = t.upper(), str(args.cik).zfill(10), None
         else:
-            cik, name = ciks.get(tick.replace("-", "."), (None, None))
+            resolved, company = company_for_query(t, ciks)
+            tick = resolved or t.upper()
+            cik, name = company or (None, None)
         if not cik:
-            print("facts: no SEC CIK for %s (is it a US filer? ETFs and foreign filers "
-                  "may not have XBRL facts)" % tick, file=sys.stderr)
+            print("facts: no unique SEC ticker for %s; use its stock ticker (for example, INFY for Infosys)"
+                  % t.upper(), file=sys.stderr)
             failed += 1
             continue
         try:

@@ -13,6 +13,9 @@ import json
 import os
 import sys
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 def plan_exit(symbol, entry, or_high=None, or_low=None, risk_reward=1.5):
     if or_high and or_low:
         midpoint = (or_high + or_low) / 2.0

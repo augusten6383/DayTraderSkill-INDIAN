@@ -22,6 +22,9 @@ DEFAULT_SYMBOLS = [
     "TATAMOTORS.NS", "BAJFINANCE.NS", "MARUTI.NS", "SUNPHARMA.NS"
 ]
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 def fetch_chart(symbol, range_str="1mo", interval="1d"):
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range={range_str}&interval={interval}"
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})

@@ -19,6 +19,9 @@ import sys
 SESSION_BARS = 75
 SQUARE_OFF_BAR = 72  # 15:15 IST
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 def simulate_trade(entry_price, stop_price, target_price, volatility_pct=0.003, iterations=5000):
     """
     Runs Monte Carlo simulation for Indian intraday setups
@@ -90,6 +93,10 @@ def main():
     print(f"  🎯 Target Hit:        {res['target_rate_pct']}%")
     print(f"  🛑 Stop Hit:          {res['stop_rate_pct']}%")
     print(f"  ⏰ Flat by 15:15 IST: {res['market_close_pct']}%")
+    print()
+    print("This is a random walk with an assumed volatility, not market history: it cannot")
+    print("tell a good setup from a bad one. For real results after costs run")
+    print("  python trader-timemachine/backtest_indian.py")
 
 if __name__ == "__main__":
     main()

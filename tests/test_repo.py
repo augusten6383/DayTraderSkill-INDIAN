@@ -14,6 +14,8 @@ ABOUT = ("11 Claude skills for day trading: scan thousands of charts, track brea
 # skills on the way to an order carry the safety block
 ORDER_PATH = ["trader-scanner", "trader-entry", "trader-exit", "trader-timemachine", "trader-budget",
               "trader-pelosi", "trader-risk", "trader-broker", "trader-alerts"]
+# added for the Indian market; lives at the root like the others (never copied under .claude/skills)
+EXTRA_SKILLS = ["trader-swing"]
 V1_ONLY = ["trader-copycat", "trader-screener", "trader-tax", "trader-rebalance"]
 
 
@@ -30,20 +32,30 @@ def every_text_file():
         for f in files:
             if f.endswith((".md", ".py", ".json", ".csv", ".txt", ".xml")) or f == "LICENSE":
                 yield os.path.join(base, f)
+        if os.path.normpath(base) == os.path.normpath(os.path.join(ROOT, ".claude")):
+            dirs[:] = [d for d in dirs if d != "skills"]  # links back to the root folders: do not read twice
 
 
 class Repo(unittest.TestCase):
     def test_eleven_skill_folders_at_the_root(self):
         found = sorted(d for d in os.listdir(ROOT)
                        if os.path.isfile(os.path.join(ROOT, d, "SKILL.md")))
-        self.assertEqual(found, sorted(SKILLS))
+        self.assertEqual(found, sorted(SKILLS + EXTRA_SKILLS))
+
+    def test_skills_are_not_copied_under_dot_claude(self):
+        # .claude/skills may hold folder links made by link_skills.ps1, never real copies
+        base = os.path.join(ROOT, ".claude", "skills")
+        for name in (os.listdir(base) if os.path.isdir(base) else []):
+            link, real = os.path.join(base, name), os.path.join(ROOT, name)
+            self.assertTrue(os.path.isdir(real), "%s has no root folder" % name)
+            self.assertTrue(os.path.samefile(link, real), "%s is a copy, not a link to the root folder" % name)
 
     def test_root_matches_the_reel(self):
         root = sorted(d for d in os.listdir(ROOT) if not d.startswith(".git"))
         self.assertEqual(root, sorted([".claude-plugin", "LICENSE", "README.md", "tests"] + SKILLS))
 
     def test_frontmatter_name_and_description(self):
-        for s in SKILLS:
+        for s in SKILLS + EXTRA_SKILLS:
             fm, text = frontmatter(os.path.join(ROOT, s, "SKILL.md"))
             self.assertIn("name: %s\n" % s, fm + "\n", s)
             self.assertRegex(fm, r"description: ", s)
@@ -60,13 +72,13 @@ class Repo(unittest.TestCase):
     def test_plugin_manifest_points_at_the_root_skills(self):
         with open(os.path.join(ROOT, ".claude-plugin", "plugin.json")) as fh:
             plugin = json.load(fh)
-        self.assertEqual(plugin["name"], "day-trader-skill")
+        self.assertEqual(plugin["name"], "jemo-trading-skill")
         self.assertEqual(plugin["skills"], "./")
         self.assertEqual(plugin["description"], ABOUT)
         with open(os.path.join(ROOT, ".claude-plugin", "marketplace.json")) as fh:
             market = json.load(fh)
-        self.assertEqual(market["name"], "day-trader-skill")
-        self.assertEqual(market["plugins"][0]["name"], "day-trader-skill")
+        self.assertEqual(market["name"], "jemo-trading-skill")
+        self.assertEqual(market["plugins"][0]["name"], "jemo-trading-skill")
 
     def test_readme_carries_the_reel_copy(self):
         with open(os.path.join(ROOT, "README.md"), encoding="utf-8") as fh:

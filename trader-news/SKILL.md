@@ -10,6 +10,9 @@ description: >-
   the user says "any news on TSLA", "why is this moving", "what's the news on
   my watchlist", "morning briefing", "pre-market news", "monitor the news",
   "did anything break", "check the 8-Ks", or after /trader-scanner finds setups.
+  For NSE stocks (MCX, BHEL, the swing basket) it runs news_indian.py: Google
+  News headlines per company and the move against the previous close, in India
+  time.
 argument-hint: "[tickers]"
 ---
 
@@ -28,6 +31,34 @@ python3 "${CLAUDE_SKILL_DIR}/news.py"                         # watchlist + plan
 python3 "${CLAUDE_SKILL_DIR}/news.py" --tickers TSLA NVDA --hours 12
 python3 "${CLAUDE_SKILL_DIR}/news.py" --no-sec --json
 ```
+
+## Indian (NSE) stocks
+
+`news.py` is for US tickers: SEC filings and Yahoo's headline feed have little
+or nothing for NSE stocks. For those, use `news_indian.py` in this folder:
+
+```bash
+python3 "${CLAUDE_SKILL_DIR}/news_indian.py"                        # the swing basket
+python3 "${CLAUDE_SKILL_DIR}/news_indian.py" --tickers MCX BHEL --hours 168
+python3 "${CLAUDE_SKILL_DIR}/news_indian.py" --tickers SUNPHARMA --name SUNPHARMA="Sun Pharma"
+python3 "${CLAUDE_SKILL_DIR}/news_indian.py" --market               # Nifty, Bank Nifty, Sensex
+```
+
+- Stocks default to `trader/swing_watch.json` and the basket in
+  `trader/swing_picks.json`. Symbols are NSE symbols; add `.BO` for BSE only.
+- Per stock: the move from Yahoo's chart for `SYMBOL.NS` (with the company's
+  full name), and a Google News (India) search for the name or "SYMBOL share".
+  Only headlines that name the company or the symbol are kept; the rest are
+  counted in a note. If a company goes by a short name its full name does not
+  start with, pass `--name SYMBOL="Short Name"`.
+- Times are IST. State is `trader/state/news_indian.json`; exit code 1 means
+  nothing new. `--all`, `--json`, `--dry-run` and `--per-stock N` work as above.
+- **No exchange filings.** NSE and BSE refuse automated requests, so results
+  dates, board meetings, block deals and pledges are not read. Say so in the
+  brief, and check the company's NSE page (the output links one) or search the
+  web before calling a stock clean.
+- Google News links redirect to the publisher. Open the story before quoting
+  it, as with any headline.
 
 ## What it reads and writes
 
@@ -61,7 +92,8 @@ python3 "${CLAUDE_SKILL_DIR}/news.py" --no-sec --json
 
 ## Steps
 
-1. Run the check: `python3 "${CLAUDE_SKILL_DIR}/news.py"`. Exit code 1 means
+1. Run the check: `python3 "${CLAUDE_SKILL_DIR}/news.py"` (US tickers) or
+   `python3 "${CLAUDE_SKILL_DIR}/news_indian.py"` (NSE stocks). Exit code 1 means
    nothing new. `--all` shows items already seen, `--json` gives everything
    machine readable, `--dry-run` leaves the state alone.
 2. Read the items that matter: every `!` filing, anything tagged earnings,

@@ -8,6 +8,12 @@ Checks orders against Indian regulatory and account risk limits:
   4. Max Trades: Does not exceed max_trades_per_day (default 3).
   5. Square-Off Rule: Blocks new intraday entries after 15:00 IST.
   6. Lot Multiples: Ensures quantity is an exact multiple of the index lot.
+
+A swing (delivery) basket is bought on one day, so it has its own day limits:
+swing_max_daily_loss_inr and swing_max_trades_per_day. They apply only with
+--swing (trader-broker/kite.py always uses them, because it sends delivery
+orders only). The intraday limits above are not changed by them. If the swing
+keys are missing, the intraday limits are used.
 """
 
 import argparse
@@ -19,6 +25,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 from market_calendar_indian import to_ist, is_market_open, SQUARE_OFF_TIME
+from indian_instruments import lot_size_for, underlying_of
 
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "..", "config_indian.json")
 
@@ -30,10 +37,20 @@ def load_config():
         "max_loss_per_trade_inr": 2000,
         "max_daily_loss_inr": 5000,
         "max_trades_per_day": 3,
-        "indices": {"NIFTY": {"lot_size": 25}, "BANKNIFTY": {"lot_size": 15}, "SENSEX": {"lot_size": 10}}
+        "indices": {"NIFTY": {"lot_size": 65}, "BANKNIFTY": {"lot_size": 30}, "SENSEX": {"lot_size": 20}}
     }
 
-def check_order_risk(symbol, qty, entry, stop, realized_loss_today=0, trades_today=0):
+def day_limits(cfg, swing=False):
+    """(max trades per day, max loss per day) for intraday orders, or for a swing basket."""
+    trades = cfg.get("max_trades_per_day", 3)
+    loss = cfg.get("max_daily_loss_inr", 5000)
+    if swing:
+        trades = cfg.get("swing_max_trades_per_day", trades)
+        loss = cfg.get("swing_max_daily_loss_inr", loss)
+    return trades, loss
+
+
+def check_order_risk(symbol, qty, entry, stop, realized_loss_today=0, trades_today=0, side="buy", swing=False):
     cfg = load_config()
     reasons = []
     passed = True
@@ -50,15 +67,30 @@ def check_order_risk(symbol, qty, entry, stop, realized_loss_today=0, trades_tod
         passed = False
 
     # Check Max Trades per Day
-    max_trades = cfg.get("max_trades_per_day", 3)
+    max_trades, max_daily_loss = day_limits(cfg, swing)
+    kind = "swing" if swing else "daily"
     if trades_today >= max_trades:
-        reasons.append(f"TRADES_LIMIT: Reached daily limit of {max_trades} trades")
+        reasons.append(f"TRADES_LIMIT: Reached {kind} limit of {max_trades} trades in a day")
         passed = False
 
     # Check Daily Loss
-    max_daily_loss = cfg.get("max_daily_loss_inr", 5000)
     if realized_loss_today >= max_daily_loss:
         reasons.append(f"DAILY_LOSS_LIMIT: Realized ₹{realized_loss_today} loss reaches ₹{max_daily_loss} cap")
+        passed = False
+
+    # A stop on the wrong side of the entry is not a stop: it would never limit the loss.
+    side = str(side).lower()
+    if qty <= 0 or entry <= 0 or stop <= 0:
+        reasons.append("BAD_ORDER: qty, entry and stop must all be above zero")
+        passed = False
+    elif side == "buy" and stop >= entry:
+        reasons.append(f"BAD_STOP: a buy needs its stop below the entry (entry ₹{entry}, stop ₹{stop})")
+        passed = False
+    elif side == "sell" and stop <= entry:
+        reasons.append(f"BAD_STOP: a short sale needs its stop above the entry (entry ₹{entry}, stop ₹{stop})")
+        passed = False
+    elif side not in ("buy", "sell"):
+        reasons.append(f"BAD_ORDER: side must be buy or sell, not {side!r}")
         passed = False
 
     # Check Trade Risk
@@ -70,13 +102,12 @@ def check_order_risk(symbol, qty, entry, stop, realized_loss_today=0, trades_tod
         passed = False
 
     # Check Lot multiples for Indices
-    for idx, details in cfg.get("indices", {}).items():
-        if idx in symbol.upper():
-            lot = details.get("lot_size", 1)
-            if qty % lot != 0:
-                reasons.append(f"LOT_SIZE_ERROR: Qty {qty} is not a multiple of {idx} lot size ({lot})")
-                passed = False
-            break
+    idx = underlying_of(symbol)
+    if idx:
+        lot = lot_size_for(symbol, cfg)
+        if qty % lot != 0:
+            reasons.append(f"LOT_SIZE_ERROR: Qty {qty} is not a multiple of {idx} lot size ({lot})")
+            passed = False
 
     return {
         "status": "PASS" if passed else "BLOCK",
@@ -94,6 +125,10 @@ def main():
     parser.add_argument("--stop", type=float, required=True, help="Stop loss price (₹)")
     parser.add_argument("--realized-loss", type=float, default=0, help="Loss already realized today (₹)")
     parser.add_argument("--trades", type=int, default=0, help="Number of trades executed today")
+    parser.add_argument("--side", choices=("buy", "sell"), default="buy",
+                        help="buy (long, the default) or sell (short)")
+    parser.add_argument("--swing", action="store_true",
+                        help="A delivery buy for the swing basket: use the swing day limits")
     args = parser.parse_args()
 
     res = check_order_risk(
@@ -102,7 +137,9 @@ def main():
         entry=args.entry,
         stop=args.stop,
         realized_loss_today=args.realized_loss,
-        trades_today=args.trades
+        trades_today=args.trades,
+        side=args.side,
+        swing=args.swing
     )
 
     print("=" * 60)

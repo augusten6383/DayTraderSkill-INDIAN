@@ -3,10 +3,8 @@
 
 Extends trader-budget sizing logic to respect:
 1. Indian Rupee (INR ₹) budget, max loss, and daily loss thresholds.
-2. Index Option Lot constraints:
-     - NIFTY 50: 25 qty / lot
-     - BANK NIFTY: 15 qty / lot
-     - SENSEX: 10 qty / lot
+2. Index Option Lot constraints, read from config_indian.json
+   (refresh them with `python indian_instruments.py refresh`).
 Orders are rounded DOWN to the nearest integer multiple of the lot size so orders
 are never rejected by NSE/BSE.
 """
@@ -16,12 +14,10 @@ import json
 import math
 import os
 import sys
-
-INDEX_LOTS = {
-    "NIFTY": 25,
-    "BANKNIFTY": 15,
-    "SENSEX": 10
-}
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+from indian_instruments import lot_size_for
 
 def calculate_option_lots(underlying, budget, entry_premium, stop_premium, max_loss):
     """
@@ -30,14 +26,22 @@ def calculate_option_lots(underlying, budget, entry_premium, stop_premium, max_l
     Max loss constraint = max_loss / risk_per_share
     Budget constraint = budget / entry_premium
     """
-    clean_und = underlying.upper().replace(" ", "")
-    lot_size = 1
-    for k, size in INDEX_LOTS.items():
-        if k in clean_und:
-            lot_size = size
-            break
+    lot_size = lot_size_for(underlying)
 
-    risk_per_unit = max(0.05, entry_premium - stop_premium)
+    problem = None
+    if not (entry_premium > 0 and stop_premium > 0 and budget > 0 and max_loss > 0):
+        problem = "entry, stop, budget and max loss must all be above zero"
+    elif stop_premium >= entry_premium:
+        problem = "the stop must be below the entry premium for a bought option"
+    if problem:
+        return {
+            "underlying": underlying, "lot_size": lot_size, "lots": 0, "total_qty": 0,
+            "entry_premium": entry_premium, "stop_premium": stop_premium,
+            "risk_per_unit": 0, "capital_used_inr": 0, "max_risk_inr": 0,
+            "status": "REJECTED (%s)" % problem,
+        }
+
+    risk_per_unit = round(entry_premium - stop_premium, 2)
     max_qty_by_risk = max_loss / risk_per_unit
     max_qty_by_budget = budget / entry_premium
 

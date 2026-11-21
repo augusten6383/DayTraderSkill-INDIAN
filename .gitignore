@@ -20,6 +20,9 @@ trader/watchlist.json
 trader/orders.json
 trader/portfolio.json
 trader/plan.json
+trader/swing_picks.json
+trader/swing_watch.json
+trader/reports/
 logs/
 *.log
 
@@ -27,3 +30,6 @@ logs/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Skill links made by link_skills.ps1 (the real skills are the trader-* folders at the root)
+.claude/skills/

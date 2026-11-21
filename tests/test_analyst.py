@@ -121,6 +121,30 @@ class LaggingData(unittest.TestCase):
 
 
 class Cli(unittest.TestCase):
+    def test_company_name_prefix_resolves_to_ticker(self):
+        ciks = {
+            "INFY": ("0001067491", "INFOSYS LIMITED"),
+            "INFI": ("0000000001", "INFINITY INC"),
+        }
+        self.assertEqual(facts.company_for_query("infosys", ciks),
+                         ("INFY", ("0001067491", "INFOSYS LIMITED")))
+
+    def test_user_agent_reads_ignored_settings_config(self):
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False) as fh:
+            json.dump({"sec_user_agent": "Test User test@example.com"}, fh)
+            path = fh.name
+        try:
+            self.assertEqual(facts.user_agent(config=path), "Test User test@example.com")
+        finally:
+            os.unlink(path)
+
+    def test_ambiguous_company_name_requires_a_ticker(self):
+        ciks = {
+            "ONE": ("0000000001", "ACME LIMITED"),
+            "TWO": ("0000000002", "ACME INDUSTRIES"),
+        }
+        self.assertEqual(facts.company_for_query("acme", ciks), (None, None))
+
     def test_metrics_file_for_the_screener(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "trader", "metrics.json")
@@ -139,7 +163,7 @@ class Cli(unittest.TestCase):
     def test_unknown_ticker_and_no_user_agent(self):
         code, _, err = run(["ZZZZ", "--offline", DIR])
         self.assertEqual(code, 2)
-        self.assertIn("no SEC CIK for ZZZZ", err)
+        self.assertIn("no unique SEC ticker for ZZZZ", err)
         old = os.environ.pop("SEC_USER_AGENT", None)
         try:
             code, _, err = run(["AAPL", "--config", "/nonexistent.json"])

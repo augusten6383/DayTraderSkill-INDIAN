@@ -28,9 +28,11 @@ Tool in this folder (standard library Python, no keys):
 python3 "${CLAUDE_SKILL_DIR}/facts.py" --help
 ```
 
-It needs the SEC User-Agent (`sec_user_agent` in `trader/config.json`, or
-`SEC_USER_AGENT`): "Your Name you@example.com" with the user's real name and
-email. It refuses to call SEC without one.
+It needs the SEC User-Agent (`sec_user_agent` in the repository's ignored
+`settings.json`, or `SEC_USER_AGENT`): "Your Name you@example.com" with the
+user's real name and email. It refuses to call SEC without one. Use the
+company's ticker, such as `INFY` for Infosys; a unique SEC company-name prefix
+is also accepted.
 
 ## What it reads and writes
 

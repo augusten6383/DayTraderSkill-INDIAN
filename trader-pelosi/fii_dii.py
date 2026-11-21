@@ -11,8 +11,12 @@ import datetime
 import json
 import urllib.request
 import re
+import sys
 
 BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 def get_fii_dii_summary():
     """Fetches FII/DII net flow updates from financial feeds"""
